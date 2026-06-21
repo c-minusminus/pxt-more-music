@@ -1,12 +1,3 @@
-/*//% block="t"
-namespace T {
-    //% block="t %t"
-    //% t.shadow=lists_create_within
-    export function t(t: number[]) {
-        return t
-    }
-}*/
-
 enum Waveshape {
     //% block="triangle"
     Triangle = 1,
@@ -195,22 +186,16 @@ namespace music {
     }
 
     /**
-     * Creates a new Note object to use inside a sequence block.
+     * Creates a structured note/chord from an array of pitch keys.
      */
-    //% blockId=music_create_note
-    //% block="note index %pitch duration %duration ms volume %volume"
+    //% block="note with keys %notes duration %duration ms volume %volume"
     //% blockNamespace=music
     //% notes.shadow="lists_create_with"
     //% notes.defl="music_create_key"
-    //% duration.defl=200
-    //% volume.defl=1024
+    //% duration.defl=200 volume.defl=1024
     //% weight=95
     //% group="Custom Sounds"
-    export function createNote(
-        notes: number[],
-        duration: number,
-        volume: number
-    ): SongNote {
+    export function createNote(notes: number[], duration: number, volume: number): SongNote {
         return new SongNote(notes, duration, volume);
     }
 }
