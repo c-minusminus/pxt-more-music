@@ -65,19 +65,25 @@ namespace music {
             this._dur = dur;
             this._vol = vol;
         }
-        //% block="set pitch to %val"
+        //% group="Custom Sounds"
+        //% block="notes"
         set notes(val: number[]) { this._notes = val }
-        //% block="get pitch"
+        //% group="Custom Sounds"
+        //% block="notes"
         get notes() { return this._notes }
 
-        //% block="set duration to %val"
+        //% group="Custom Sounds"
+        //% block="dur"
         set dur(val: number) { this._dur = val }
-        //% block="get duration"
+        //% group="Custom Sounds"
+        //% block="dur"
         get dur() { return this._dur }
 
-        //% block="set volume to %val"
+        //% group="Custom Sounds"
+        //% block="vol"
         set vol(val: number) { this._vol = val }
-        //% block="get volume"
+        //% group="Custom Sounds"
+        //% block="vol"
         get vol() { return this._vol }
     }
 
@@ -85,7 +91,7 @@ namespace music {
      * Helper function to turn a Key selection and an Octave into a precise pitch value.
      */
     //% blockId=music_create_key
-    //% block="key %key octave %octave"
+    //% block="%key %octave"
     //% blockNamespace=music
     //% octave.defl=4
     //% weight=75
