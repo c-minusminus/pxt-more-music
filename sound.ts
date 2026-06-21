@@ -50,40 +50,29 @@ enum Key {
     B  = 12
 }
 
-//% blockNamespace=music
-class SongNote {
-    _notes: number[];
-    _dur: number;
-    _vol: number;
-
-    constructor(notes: number[], dur: number, vol: number) {
-        this._notes = notes;
-        this._dur = dur;
-        this._vol = vol;
-    }
-    //% group="Custom Sounds" blockSetVariable="myNote"
-    //% block="notes"
-    set notes(val: number[]) { this._notes = val }
-    //% group="Custom Sounds" blockSetVariable="myNote"
-    //% block="notes"
-    get notes(): number[] { return this._notes }
-
-    //% group="Custom Sounds" blockSetVariable="myNote"
-    //% block="dur"
-    set dur(val: number) { this._dur = val }
-    //% group="Custom Sounds" blockSetVariable="myNote"
-    //% block="dur"
-    get dur(): number { return this._dur }
-
-    //% group="Custom Sounds" blockSetVariable="myNote"
-    //% block="vol"
-    set vol(val: number) { this._vol = val }
-    //% group="Custom Sounds" blockSetVariable="myNote"
-    //% block="vol"
-    get vol(): number { return this._vol }
-}
-
 namespace music {
+    // Moved inside and exported so the entire extension reads cleanly
+    export class SongNote {
+        _notes: number[];
+        _dur: number;
+        _vol: number;
+
+        constructor(notes: number[], dur: number, vol: number) {
+            this._notes = notes;
+            this._dur = dur;
+            this._vol = vol;
+        }
+
+        get notes(): number[] { return this._notes }
+        set notes(val: number[]) { this._notes = val }
+
+        get dur(): number { return this._dur }
+        set dur(val: number) { this._dur = val }
+
+        get vol(): number { return this._vol }
+        set vol(val: number) { this._vol = val }
+    }
+
     /**
      * Helper function to turn a Key selection and an Octave into a precise pitch value.
      */
@@ -97,7 +86,6 @@ namespace music {
         if (key === Key.None) return -1;
         return key + octave * 12;
     }
-
 
     /**
      * Renders an instrument configuration into a 28-byte synthesizer structure.
@@ -155,9 +143,8 @@ namespace music {
     /**
      * Iterates through an array of structured Note objects and plays them sequentially.
      */
-    //% block="play notes on %instrument notes %sequence"
+    //% block="play notes on %instrument notes %notes"
     //% blockNamespace=music
-    //% instrument.shadow=myInstrument
     //% weight=80
     //% group="Custom Sounds"
     export function playNotes(
