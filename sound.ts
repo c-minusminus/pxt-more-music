@@ -20,6 +20,34 @@ enum Waveshape {
     //% block="square cycle 64"
     SquareCycle64 = 18
 }
+enum Key {
+    //% block="None"
+    None = -1,
+    //% block="C"
+    C  = 1,
+    //% block="C#"
+    Cs = 2,
+    //% block="D"
+    D  = 3,
+    //% block="D#"
+    Ds = 4,
+    //% block="E"
+    E  = 5,
+    //% block="F"
+    F  = 6,
+    //% block="F#"
+    Fs = 7,
+    //% block="G"
+    G  = 8,
+    //% block="G#"
+    Gs = 9,
+    //% block="A"
+    A  = 10,
+    //% block="A#"
+    As = 11,
+    //% block="B"
+    B  = 12
+}
 
 namespace music {
     //% blockNamespace=music
@@ -28,19 +56,19 @@ namespace music {
     //% weight=100
     //% group="Custom Sounds"
     export class SongNote {
-        _pitch: number;
+        _notes: number[];
         _dur: number;
         _vol: number;
 
-        constructor(pitch: number, dur: number, vol: number) {
-            this._pitch = pitch;
+        constructor(notes: number[], dur: number, vol: number) {
+            this._notes = notes;
             this._dur = dur;
             this._vol = vol;
         }
         //% block="set pitch to %val"
-        set pitch(val: number) { this._pitch = val }
+        set notes(val: number[]) { this._notes = val }
         //% block="get pitch"
-        get pitch() { return this._pitch }
+        get notes() { return this._notes }
 
         //% block="set duration to %val"
         set dur(val: number) { this._dur = val }
@@ -52,6 +80,21 @@ namespace music {
         //% block="get volume"
         get vol() { return this._vol }
     }
+
+    /**
+     * Helper function to turn a Key selection and an Octave into a precise pitch value.
+     */
+    //% blockId=music_create_key
+    //% block="key %key octave %octave"
+    //% blockNamespace=music
+    //% octave.defl=4
+    //% weight=75
+    //% group="Custom Sounds"
+    export function key(key: Key, octave: number): number {
+        if (key === Key.None) return -1;
+        return key + octave * 12;
+    }
+
 
     /**
      * Renders an instrument configuration into a 28-byte synthesizer structure.
@@ -128,16 +171,20 @@ namespace music {
         for (let i = 0; i < sequence.length; i++) {
             let currentNote = sequence[i];
 
-            if (currentNote.pitch > -1) {
-                playInstrument(
-                    instrument,
-                    currentNote.pitch,
-                    currentNote.dur,
-                    currentNote.vol,
-                    timeOffset
-                );
+            if (currentNote._notes && currentNote._notes.length > 0) {
+                for (const pitch of currentNote._notes) {
+                    if (pitch > -1) {
+                        playInstrument(
+                            instrument,
+                            pitch,
+                            currentNote._dur,
+                            currentNote._vol,
+                            timeOffset
+                        );
+                    }
+                }
             }
-            timeOffset += currentNote.dur;
+            timeOffset += currentNote._dur;
         }
     }
 
@@ -149,7 +196,11 @@ namespace music {
     //% pitch.defl=43 duration.defl=200 volume.defl=1024
     //% weight=95
     //% group="Custom Sounds"
-    export function createNote(pitch: number, duration: number, volume: number): SongNote {
-        return new SongNote(pitch, duration, volume);
+    export function createNote(
+        notes: number[],
+        duration: number,
+        volume: number
+    ): SongNote {
+        return new SongNote(notes, duration, volume);
     }
 }

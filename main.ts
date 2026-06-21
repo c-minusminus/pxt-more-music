@@ -7,35 +7,35 @@ function treble() {
             [0, 0, 0, 0, 0],
             [0, 0],
             [0, 0],
-            2
+            0
         ), [
-            new music.SongNote(20, 500, 128),
-            new music.SongNote(25, 500, 128),
-            new music.SongNote(29, 500, 128),
-            new music.SongNote(20, 500, 128),
-            new music.SongNote(25, 500, 128),
-            new music.SongNote(29, 500, 128),
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.C, 4)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.C, 4)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
 
-            new music.SongNote(15, 500, 128),
-            new music.SongNote(22, 500, 128),
-            new music.SongNote(29, 500, 128),
-            new music.SongNote(15, 500, 128),
-            new music.SongNote(22, 500, 128),
-            new music.SongNote(29, 500, 128),
+            new music.SongNote([music.key(Key.D, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
+            new music.SongNote([music.key(Key.D, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
 
-            new music.SongNote(13, 500, 128),
-            new music.SongNote(20, 500, 128),
-            new music.SongNote(27, 500, 128),
-            new music.SongNote(13, 500, 128),
-            new music.SongNote(20, 500, 128),
-            new music.SongNote(27, 500, 128),
+            new music.SongNote([music.key(Key.C, 3)], 500, 128),
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.D, 4)], 500, 128),
+            new music.SongNote([music.key(Key.C, 3)], 500, 128),
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.D, 4)], 500, 128),
 
-            new music.SongNote(10, 500, 128),
-            new music.SongNote(17, 500, 128),
-            new music.SongNote(22, 500, 128),
-            new music.SongNote(10, 500, 128),
-            new music.SongNote(17, 500, 128),
-            new music.SongNote(22, 500, 128),
+            new music.SongNote([music.key(Key.A, 2)], 500, 128),
+            new music.SongNote([music.key(Key.E, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 2)], 500, 128),
+            new music.SongNote([music.key(Key.E, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
         ]
     )
 }
@@ -50,10 +50,10 @@ function bass() {
             [0, 0],
             0
         ), [
-            new music.SongNote(20, 3000, 128),
-            new music.SongNote(15, 3000, 128),
-            new music.SongNote(20, 3000, 128),
-            new music.SongNote(17, 3000, 128),
+            new music.SongNote([music.key(Key.G, 1)], 3000, 128),
+            new music.SongNote([music.key(Key.D, 1)], 3000, 128),
+            new music.SongNote([music.key(Key.G, 1)], 3000, 128),
+            new music.SongNote([music.key(Key.E, 1)], 3000, 128),
         ]
     )
 }
@@ -65,4 +65,4 @@ game.onUpdateInterval(12000, function() {
     if (!first) first = true
     else bass()
 })
-*/
+/**/
