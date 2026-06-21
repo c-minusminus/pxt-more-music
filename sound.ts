@@ -1,3 +1,12 @@
+/*//% block="t"
+namespace T {
+    //% block="t %t"
+    //% t.shadow=lists_create_within
+    export function t(t: number[]) {
+        return t
+    }
+}*/
+
 enum Waveshape {
     //% block="triangle"
     Triangle = 1,
@@ -20,6 +29,7 @@ enum Waveshape {
     //% block="square cycle 64"
     SquareCycle64 = 18
 }
+
 enum Key {
     //% block="None"
     None = -1,
@@ -49,44 +59,40 @@ enum Key {
     B  = 12
 }
 
-namespace music {
-    //% blockNamespace=music
-    //% block="note %pitch||duration %duration ms volume %volume"
-    //% duration.defl=200 volume.defl=1024
-    //% weight=100
-    //% group="Custom Sounds"
-    export class SongNote {
-        _notes: number[];
-        _dur: number;
-        _vol: number;
+//% blockNamespace=music
+class SongNote {
+    _notes: number[];
+    _dur: number;
+    _vol: number;
 
-        constructor(notes: number[], dur: number, vol: number) {
-            this._notes = notes;
-            this._dur = dur;
-            this._vol = vol;
-        }
-        //% group="Custom Sounds"
-        //% block="notes"
-        set notes(val: number[]) { this._notes = val }
-        //% group="Custom Sounds"
-        //% block="notes"
-        get notes() { return this._notes }
-
-        //% group="Custom Sounds"
-        //% block="dur"
-        set dur(val: number) { this._dur = val }
-        //% group="Custom Sounds"
-        //% block="dur"
-        get dur() { return this._dur }
-
-        //% group="Custom Sounds"
-        //% block="vol"
-        set vol(val: number) { this._vol = val }
-        //% group="Custom Sounds"
-        //% block="vol"
-        get vol() { return this._vol }
+    constructor(notes: number[], dur: number, vol: number) {
+        this._notes = notes;
+        this._dur = dur;
+        this._vol = vol;
     }
+    //% group="Custom Sounds" blockSetVariable="myNote"
+    //% block="notes"
+    set notes(val: number[]) { this._notes = val }
+    //% group="Custom Sounds" blockSetVariable="myNote"
+    //% block="notes"
+    get notes(): number[] { return this._notes }
 
+    //% group="Custom Sounds" blockSetVariable="myNote"
+    //% block="dur"
+    set dur(val: number) { this._dur = val }
+    //% group="Custom Sounds" blockSetVariable="myNote"
+    //% block="dur"
+    get dur(): number { return this._dur }
+
+    //% group="Custom Sounds" blockSetVariable="myNote"
+    //% block="vol"
+    set vol(val: number) { this._vol = val }
+    //% group="Custom Sounds" blockSetVariable="myNote"
+    //% block="vol"
+    get vol(): number { return this._vol }
+}
+
+namespace music {
     /**
      * Helper function to turn a Key selection and an Octave into a precise pitch value.
      */
@@ -140,13 +146,6 @@ namespace music {
         return new music.sequencer.Instrument(buf);
     }
 
-    /**
-     * Packages instrument settings into a configuration buffer and triggers audio playback instantly.
-     */
-    //% block="play instrument %instrument note index %freq duration %length ms volume %vol delay %when ms"
-    //% blockNamespace=music
-    //% weight=90
-    //% group="Custom Sounds"
     export function playInstrument(
         instrument: music.sequencer.Instrument,
         freq: number,
@@ -165,17 +164,18 @@ namespace music {
     /**
      * Iterates through an array of structured Note objects and plays them sequentially.
      */
-    //% block="play sequence on %instrument notes %sequence"
+    //% block="play notes on %instrument notes %sequence"
     //% blockNamespace=music
+    //% instrument.shadow=myInstrument
     //% weight=80
     //% group="Custom Sounds"
     export function playNotes(
         instrument: music.sequencer.Instrument,
-        sequence: SongNote[]
+        notes: SongNote[]
     ) {
         let timeOffset = 0
-        for (let i = 0; i < sequence.length; i++) {
-            let currentNote = sequence[i];
+        for (let i = 0; i < notes.length; i++) {
+            let currentNote = notes[i];
 
             if (currentNote._notes && currentNote._notes.length > 0) {
                 for (const pitch of currentNote._notes) {
@@ -197,9 +197,13 @@ namespace music {
     /**
      * Creates a new Note object to use inside a sequence block.
      */
+    //% blockId=music_create_note
     //% block="note index %pitch duration %duration ms volume %volume"
     //% blockNamespace=music
-    //% pitch.defl=43 duration.defl=200 volume.defl=1024
+    //% notes.shadow="lists_create_with"
+    //% notes.defl="music_create_key"
+    //% duration.defl=200
+    //% volume.defl=1024
     //% weight=95
     //% group="Custom Sounds"
     export function createNote(

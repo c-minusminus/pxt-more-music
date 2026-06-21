@@ -3,7 +3,7 @@ function treble() {
     music.playNotes(
         music.createInstrument(
             Waveshape.Sine,
-            [0, 0, 768, 5, 768],
+            [0, 0, 1024, 0, 1024],
             [0, 0, 0, 0, 0],
             [0, 0],
             [0, 0],
