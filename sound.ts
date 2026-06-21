@@ -25,38 +25,45 @@ enum Key {
     //% block="None"
     None = -1,
     //% block="C"
-    C  = 1,
+    C = 1,
     //% block="C#"
     Cs = 2,
     //% block="D"
-    D  = 3,
+    D = 3,
     //% block="D#"
     Ds = 4,
     //% block="E"
-    E  = 5,
+    E = 5,
     //% block="F"
-    F  = 6,
+    F = 6,
     //% block="F#"
     Fs = 7,
     //% block="G"
-    G  = 8,
+    G = 8,
     //% block="G#"
     Gs = 9,
     //% block="A"
-    A  = 10,
+    A = 10,
     //% block="A#"
     As = 11,
     //% block="B"
-    B  = 12
+    B = 12
 }
 
 namespace music {
-    // Moved inside and exported so the entire extension reads cleanly
+    /**
+     * A structured data container representing a single note or polyphonic chord.
+     */
     export class SongNote {
         _notes: number[];
         _dur: number;
         _vol: number;
 
+        /**
+         * @param notes An array of numerical MIDI-style pitches.
+         * @param dur The duration of the note in milliseconds.
+         * @param vol The amplitude volume scaling value (typically 0-1024).
+         */
         constructor(notes: number[], dur: number, vol: number) {
             this._notes = notes;
             this._dur = dur;
@@ -75,6 +82,8 @@ namespace music {
 
     /**
      * Helper function to turn a Key selection and an Octave into a precise pitch value.
+     * @param key The piano roll key offset selection (C through B, or None for rests).
+     * @param octave The numeric octave register positioning (defaults to 4).
      */
     //% blockId=music_create_key
     //% block="%key %octave"
@@ -88,11 +97,23 @@ namespace music {
     }
 
     /**
-     * Renders an instrument configuration into a 28-byte synthesizer structure.
+     * Renders a custom instrument configuration into a 28-byte synthesizer structure.
+     * @param waveform The basic oscillator shape (e.g., Sine, Triangle, Sawtooth).
+     * @param ampEnv Volume envelope settings array: [Attack, Decay, Sustain, Release, Peak].
+     * @param pitchEnv Pitch modification envelope settings array: [Attack, Decay, Sustain, Release, Peak].
+     * @param ampLfo Volume low-frequency oscillator configurations: [Frequency, Amplitude].
+     * @param pitchLfo Pitch low-frequency oscillator configurations: [Frequency, Amplitude].
+     * @param octave Base pitch shift adjustment multiplier for the instrument.
      */
-    //% block="create instrument with waveform %waveform||ampEnv %ampEnv pitchEnv %pitchEnv ampLfo %ampLfo pitchLfo %pitchLfo octave %octave"
+    //% blockId=music_create_instrument
+    //% block="create instrument with waveform %waveform amp envelope %ampEnv pitch envelope %pitchEnv amp LFO %ampLfo pitch LFO %pitchLfo octave %octave"
     //% blockNamespace=music
-    //% inlineInputMode=inline
+    //% waveform.defl=Waveshape.Sine
+    //% octave.defl=0
+    //% ampEnv.shadow="lists_create_with"
+    //% pitchEnv.shadow="lists_create_with"
+    //% ampLfo.shadow="lists_create_with"
+    //% pitchLfo.shadow="lists_create_with"
     //% weight=100
     //% group="Custom Sounds"
     export function createInstrument(
@@ -101,6 +122,11 @@ namespace music {
         ampLfo: number[], pitchLfo: number[],
         octave: number
     ): music.sequencer.Instrument {
+        if (!ampEnv || ampEnv.length === 0) ampEnv = [0, 0, 1024, 0, 1024];
+        if (!pitchEnv || pitchEnv.length === 0) pitchEnv = [0, 0, 0, 0, 0];
+        if (!ampLfo || ampLfo.length === 0) ampLfo = [0, 0];
+        if (!pitchLfo || pitchLfo.length === 0) pitchLfo = [0, 0];
+
         let buf = control.createBuffer(28);
         buf[0] = (waveform - 1) & 0xFF;
 
@@ -141,10 +167,16 @@ namespace music {
     }
 
     /**
-     * Iterates through an array of structured Note objects and plays them sequentially.
+     * Iterates through an array of structured SongNote objects and plays them sequentially.
+     * @param instrument The synth voice workspace configuration to sound out.
+     * @param notes The collection tracking stream of sequential note/chord blocks.
      */
     //% block="play notes on %instrument notes %notes"
     //% blockNamespace=music
+    //% instrument.shadow="variables_get"
+    //% instrument.defl="myInstrument"
+    //% notes.shadow="lists_create_with"
+    //% notes.defl="music_create_note"
     //% weight=80
     //% group="Custom Sounds"
     export function playNotes(
@@ -174,15 +206,89 @@ namespace music {
 
     /**
      * Creates a structured note/chord from an array of pitch keys.
+     * @param notes Array tracking the stacked pitches assigned to this time step.
+     * @param duration The lifespan duration window of the note event (in ms).
+     * @param volume Master gain velocity ceiling index for this sound block.
      */
     //% block="note with keys %notes duration %duration ms volume %volume"
+    //% blockId=music_create_note
     //% blockNamespace=music
     //% notes.shadow="lists_create_with"
     //% notes.defl="music_create_key"
-    //% duration.defl=200 volume.defl=1024
+    //% duration.defl=200
+    //% volume.defl=1024
     //% weight=95
     //% group="Custom Sounds"
     export function createNote(notes: number[], duration: number, volume: number): SongNote {
         return new SongNote(notes, duration, volume);
     }
 }
+
+/* example code for a song
+function treble() {
+    music.playNotes(
+        music.createInstrument(
+            Waveshape.Sine,
+            [0, 0, 1024, 0, 1024],
+            [0, 0, 0, 0, 0],
+            [0, 0],
+            [0, 0],
+            0
+        ), [
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.C, 4)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.C, 4)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
+
+            new music.SongNote([music.key(Key.D, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
+            new music.SongNote([music.key(Key.D, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
+            new music.SongNote([music.key(Key.E, 4)], 500, 128),
+
+            new music.SongNote([music.key(Key.C, 3)], 500, 128),
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.D, 4)], 500, 128),
+            new music.SongNote([music.key(Key.C, 3)], 500, 128),
+            new music.SongNote([music.key(Key.G, 3)], 500, 128),
+            new music.SongNote([music.key(Key.D, 4)], 500, 128),
+
+            new music.SongNote([music.key(Key.A, 2)], 500, 128),
+            new music.SongNote([music.key(Key.E, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 2)], 500, 128),
+            new music.SongNote([music.key(Key.E, 3)], 500, 128),
+            new music.SongNote([music.key(Key.A, 3)], 500, 128),
+        ]
+    )
+}
+
+function bass() {
+    music.playNotes(
+        music.createInstrument(
+            Waveshape.Square50,
+            [0, 0, 1024, 5, 1024],
+            [0, 0, 0, 0, 0],
+            [0, 0],
+            [0, 0],
+            0
+        ), [
+            new music.SongNote([music.key(Key.G, 1)], 3000, 128),
+            new music.SongNote([music.key(Key.D, 1)], 3000, 128),
+            new music.SongNote([music.key(Key.G, 1)], 3000, 128),
+            new music.SongNote([music.key(Key.E, 1)], 3000, 128),
+        ]
+    )
+}
+
+let first = false
+game.onUpdateInterval(12000, function() {
+    treble()
+
+    if (!first) first = true
+    else bass()
+})
+/**/
