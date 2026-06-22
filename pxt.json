@@ -1,8 +1,7 @@
 {
     "name": "more-music",
     "dependencies": {
-        "device": "*",
-        "settings-blocks": "github:microsoft/pxt-settings-blocks#v1.0.0"
+        "device": "*"
     },
     "files": [
         "main.ts",
