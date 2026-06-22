@@ -52,6 +52,45 @@ enum Key {
 
 namespace music {
     /**
+     * Helper function for making an LFO (low frequency oscillator).
+     * @param attack The time it takes for the signal to rise from zero to its absolute maximum level.
+     * @param decay The time it takes for the signal to fall from its peak level down to the sustain level.
+     * @param sustain The constant level the signal maintains for as long as the input remains active.
+     * @param release The time it takes for the signal to fade back down to zero after the input stops (e.g., letting go of a key).
+     * @param peak The maximum level or highest value the signal reaches at the very end of the attack phase.
+     */
+    //% blockId=music_env
+    //% block="attack %attack decay %decay sustain %sustain release %release peak %peak"
+    //% blockNamespace=music
+    //% attack.defl=0
+    //% decay.defl=0
+    //% sustain.defl=1024
+    //% release.defl=5
+    //% peak.defl=1024
+    //% weight=75
+    //% group="Custom Sounds"
+    export function envelope(attack: number, decay: number, sustain: number, release: number, peak: number): number[] {
+        return [attack, decay, sustain, release, peak]
+    }
+
+    /**
+     * Helper function for making an LFO (low frequency oscillator).
+     * @param frequency How fast the oscillator repeats.
+     * @param amplitude How big the oscillator is.
+     */
+    //% blockId=music_lfo
+    //% block="frequency %frequency amplitude %amplitude"
+    //% blockNamespace=music
+    //% frequency.defl=0
+    //% amplitude.defl=0
+    //% weight=75
+    //% group="Custom Sounds"
+    export function lfo(frequency: number, amplitude: number): number[] {
+        return [frequency, amplitude]
+    }
+
+
+    /**
      * A structured data container representing a single note or polyphonic chord.
      */
     export class SongNote {
@@ -111,9 +150,13 @@ namespace music {
     //% waveform.defl=Waveshape.Sine
     //% octave.defl=0
     //% ampEnv.shadow="lists_create_with"
+    //% ampEnv.defl="music_env"
     //% pitchEnv.shadow="lists_create_with"
+    //% pitchEnv.defl="music_env"
     //% ampLfo.shadow="lists_create_with"
+    //% ampLfo.defl="music_lfo"
     //% pitchLfo.shadow="lists_create_with"
+    //% pitchLfo.defl="music_lfo"
     //% weight=100
     //% group="Custom Sounds"
     export function createInstrument(
@@ -223,72 +266,3 @@ namespace music {
         return new SongNote(notes, duration, volume);
     }
 }
-
-/* example code for a song
-function treble() {
-    music.playNotes(
-        music.createInstrument(
-            Waveshape.Sine,
-            [0, 0, 1024, 0, 1024],
-            [0, 0, 0, 0, 0],
-            [0, 0],
-            [0, 0],
-            0
-        ), [
-            new music.SongNote([music.key(Key.G, 3)], 500, 128),
-            new music.SongNote([music.key(Key.C, 4)], 500, 128),
-            new music.SongNote([music.key(Key.E, 4)], 500, 128),
-            new music.SongNote([music.key(Key.G, 3)], 500, 128),
-            new music.SongNote([music.key(Key.C, 4)], 500, 128),
-            new music.SongNote([music.key(Key.E, 4)], 500, 128),
-
-            new music.SongNote([music.key(Key.D, 3)], 500, 128),
-            new music.SongNote([music.key(Key.A, 3)], 500, 128),
-            new music.SongNote([music.key(Key.E, 4)], 500, 128),
-            new music.SongNote([music.key(Key.D, 3)], 500, 128),
-            new music.SongNote([music.key(Key.A, 3)], 500, 128),
-            new music.SongNote([music.key(Key.E, 4)], 500, 128),
-
-            new music.SongNote([music.key(Key.C, 3)], 500, 128),
-            new music.SongNote([music.key(Key.G, 3)], 500, 128),
-            new music.SongNote([music.key(Key.D, 4)], 500, 128),
-            new music.SongNote([music.key(Key.C, 3)], 500, 128),
-            new music.SongNote([music.key(Key.G, 3)], 500, 128),
-            new music.SongNote([music.key(Key.D, 4)], 500, 128),
-
-            new music.SongNote([music.key(Key.A, 2)], 500, 128),
-            new music.SongNote([music.key(Key.E, 3)], 500, 128),
-            new music.SongNote([music.key(Key.A, 3)], 500, 128),
-            new music.SongNote([music.key(Key.A, 2)], 500, 128),
-            new music.SongNote([music.key(Key.E, 3)], 500, 128),
-            new music.SongNote([music.key(Key.A, 3)], 500, 128),
-        ]
-    )
-}
-
-function bass() {
-    music.playNotes(
-        music.createInstrument(
-            Waveshape.Square50,
-            [0, 0, 1024, 5, 1024],
-            [0, 0, 0, 0, 0],
-            [0, 0],
-            [0, 0],
-            0
-        ), [
-            new music.SongNote([music.key(Key.G, 1)], 3000, 128),
-            new music.SongNote([music.key(Key.D, 1)], 3000, 128),
-            new music.SongNote([music.key(Key.G, 1)], 3000, 128),
-            new music.SongNote([music.key(Key.E, 1)], 3000, 128),
-        ]
-    )
-}
-
-let first = false
-game.onUpdateInterval(12000, function() {
-    treble()
-
-    if (!first) first = true
-    else bass()
-})
-/**/
