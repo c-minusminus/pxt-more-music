@@ -149,13 +149,9 @@ namespace music {
     //% blockNamespace=music
     //% waveform.defl=Waveshape.Sine
     //% octave.defl=0
-    //% ampEnv.shadow="lists_create_with"
     //% ampEnv.defl="music_env"
-    //% pitchEnv.shadow="lists_create_with"
     //% pitchEnv.defl="music_env"
-    //% ampLfo.shadow="lists_create_with"
     //% ampLfo.defl="music_lfo"
-    //% pitchLfo.shadow="lists_create_with"
     //% pitchLfo.defl="music_lfo"
     //% weight=100
     //% group="Custom Sounds"
