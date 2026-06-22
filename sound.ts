@@ -134,7 +134,31 @@ namespace music {
         return drums;
     }
 
+    /**
+     * Iterates through a sequenced timeline tracker grid and fires drum hits.
+     * @param drums The collection array of custom drum sounds to choose from.
+     * @param notes A 2D array matrix containing drum triggers and line timing: [[drum, drum, ... timeTillNext], ...].
+     */
+    //% blockId=music_play_drum_notes
+    //% block="play drum kit %drums pattern %notes"
+    //% blockNamespace=music
+    //% drums.shadow="variables_get"
+    //% drums.defl="myDrumKit"
+    //% notes.shadow="lists_create_with"
+    //% weight=78
+    //% group="Custom Sounds"
+    export function playDrumNotes(drums: music.sequencer.DrumInstrument[], notes: number[][]) {
+        let time = 0;
+        for (const note of notes) {
+            for (let i = 0; i < note.length - 1; i++)
+                music.playInstructions(
+                    time,
+                    music.sequencer.renderDrumInstrument(drums[note[i]], 1024)
+                );
 
+            time += note[note.length - 1];
+        }
+    }
 
 
 
@@ -293,21 +317,6 @@ namespace music {
         return new music.sequencer.Instrument(buf);
     }
 
-    export function playInstrument(
-        instrument: music.sequencer.Instrument,
-        freq: number,
-        length: number,
-        vol: number,
-        when: number
-    ) {
-        music.playInstructions(when, music.sequencer.renderInstrument(
-            instrument,
-            music.lookupFrequency(freq + instrument.octave * 12),
-            length,
-            vol
-        ))
-    }
-
     /**
      * Iterates through an array of structured SongNote objects and plays them sequentially.
      * @param instrument The synth voice workspace configuration to sound out.
@@ -332,13 +341,12 @@ namespace music {
             if (currentNote._notes && currentNote._notes.length > 0) {
                 for (const pitch of currentNote._notes) {
                     if (pitch > -1) {
-                        playInstrument(
+                        music.playInstructions(timeOffset, music.sequencer.renderInstrument(
                             instrument,
-                            pitch,
+                            music.lookupFrequency(pitch + instrument.octave * 12),
                             currentNote._dur,
-                            currentNote._vol,
-                            timeOffset
-                        );
+                            currentNote._vol
+                        ))
                     }
                 }
             }
