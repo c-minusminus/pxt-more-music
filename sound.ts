@@ -167,7 +167,7 @@ namespace music {
         if (!pitchLfo || pitchLfo.length === 0) pitchLfo = [0, 0];
 
         let buf = control.createBuffer(28);
-        buf[0] = (waveform - 1) & 0xFF;
+        buf[0] = waveform;
 
         buf.setNumber(NumberFormat.UInt16LE, 1, ampEnv[0]);
         buf.setNumber(NumberFormat.UInt16LE, 3, ampEnv[1]);
