@@ -52,6 +52,109 @@ enum Key {
 
 namespace music {
     /**
+     * Creates a single drum configuration step.
+     * @param waveform The basic oscillator wave shape for this step.
+     * @param frequency The target frequency (pitch) for this step.
+     * @param volume The target volume level (0-1024) for this step.
+     * @param duration How long this step lasts in milliseconds.
+     */
+    //% blockId=music_create_drum_step
+    //% block="shape %waveform freq %frequency vol %volume duration %duration ms"
+    //% blockNamespace=music
+    //% inlineInputMode=inline
+    //% waveform.defl=Waveshape.Noise
+    //% frequency.defl=100
+    //% volume.defl=1024
+    //% duration.defl=50
+    //% weight=90
+    //% group="Custom Sounds"
+    export function createDrumStep(waveform: Waveshape, frequency: number, volume: number, duration: number): music.sequencer.DrumStep {
+        let step = new music.sequencer.DrumStep();
+        step.waveform = waveform;
+        step.frequency = frequency;
+        step.volume = volume;
+        step.duration = duration;
+        return step;
+    }
+
+    /**
+     * Combines an array of drum steps into a single DrumInstrument hit.
+     * @param startFreq The initial frequency when the drum is first struck.
+     * @param startVol The initial starting volume of the punch (0-1024).
+     * @param steps The array of sequential drum envelope modification steps.
+     */
+    //% blockId=music_create_drum
+    //% block="create drum hit starting freq %startFreq vol %startVol steps %steps"
+    //% blockNamespace=music
+    //% startFreq.defl=200
+    //% startVol.defl=1024
+    //% steps.shadow="lists_create_with"
+    //% steps.defl="music_create_drum_step"
+    //% weight=91
+    //% group="Custom Sounds"
+    export function createDrum(
+        startFreq: number,
+        startVol: number,
+        steps: music.sequencer.DrumStep[]
+    ): music.sequencer.DrumInstrument {
+        if (!steps || steps.length === 0) {
+            steps = [createDrumStep(Waveshape.Noise, 40, 0, 100)];
+        }
+
+        let totalBytes = 5 + (steps.length * 7);
+        let buf = control.createBuffer(totalBytes);
+
+        buf[0] = steps.length & 0xFF;
+        buf.setNumber(NumberFormat.UInt16LE, 1, startFreq);
+        buf.setNumber(NumberFormat.UInt16LE, 3, startVol);
+
+        for (let i = 0; i < steps.length; i++) {
+            let offset = 5 + (i * 7);
+            buf[offset] = steps[i].waveform & 0xFF;
+            buf.setNumber(NumberFormat.UInt16LE, offset + 1, steps[i].frequency);
+            buf.setNumber(NumberFormat.UInt16LE, offset + 3, steps[i].volume);
+            buf.setNumber(NumberFormat.UInt16LE, offset + 5, steps[i].duration);
+        }
+
+        return new music.sequencer.DrumInstrument(buf, 0);
+    }
+
+    /**
+     * Combines multiple individual drum noises into a comprehensive Drum Kit array.
+     * @param drums An array of your custom designed drum hits.
+     */
+    //% blockId=music_create_drum_kit
+    //% block="create drum kit with drums %drums"
+    //% blockNamespace=music
+    //% drums.shadow="lists_create_with"
+    //% drums.defl="music_create_drum"
+    //% weight=92
+    //% group="Custom Sounds"
+    export function createDrumKit(drums: music.sequencer.DrumInstrument[]): music.sequencer.DrumInstrument[] {
+        return drums;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
      * Helper function for making an LFO (low frequency oscillator).
      * @param attack The time it takes for the signal to rise from zero to its absolute maximum level.
      * @param decay The time it takes for the signal to fall from its peak level down to the sustain level.
