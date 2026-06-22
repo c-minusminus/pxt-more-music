@@ -176,7 +176,7 @@ namespace music {
     //% instrument.shadow="variables_get"
     //% instrument.defl="myInstrument"
     //% notes.shadow="lists_create_with"
-    //% notes.defl="music_create_key"
+    //% notes.defl="music_create_note"
     //% weight=80
     //% group="Custom Sounds"
     export function playNotes(
