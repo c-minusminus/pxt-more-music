@@ -1,18 +1,21 @@
 enum Waveshape {
-    //% block="triangle"
-    Triangle = 1,
-    //% block="sawtooth"
-    Sawtooth = 2,
+    // basic waves
     //% block="sine"
     Sine = 3,
+    //% block="triangle"
+    Triangle = 1,
+    //% block="square 50"
+    Square50 = 15,
+    //% block="sawtooth"
+    Sawtooth = 2,
     //% block="tuned noise"
     TunedNoise = 4,
+
+    // complex waves
     //% block="noise"
     Noise = 5,
     //% block="square 10"
     Square10 = 11,
-    //% block="square 50"
-    Square50 = 15,
     //% block="square cycle 16"
     SquareCycle16 = 16,
     //% block="square cycle 32"
@@ -66,7 +69,7 @@ namespace music {
     //% frequency.defl=100
     //% volume.defl=1024
     //% duration.defl=50
-    //% weight=90
+    //% weight=13
     //% group="Custom Sounds"
     export function createDrumStep(waveform: Waveshape, frequency: number, volume: number, duration: number): music.sequencer.DrumStep {
         let step = new music.sequencer.DrumStep();
@@ -90,27 +93,23 @@ namespace music {
     //% startVol.defl=1024
     //% steps.shadow="lists_create_with"
     //% steps.defl="music_create_drum_step"
-    //% weight=91
+    //% weight=12
     //% group="Custom Sounds"
     export function createDrum(
         startFreq: number,
         startVol: number,
         steps: music.sequencer.DrumStep[]
     ): music.sequencer.DrumInstrument {
-        if (!steps || steps.length === 0) {
-            steps = [createDrumStep(Waveshape.Noise, 40, 0, 100)];
-        }
-
         let totalBytes = 5 + (steps.length * 7);
         let buf = control.createBuffer(totalBytes);
 
-        buf[0] = steps.length & 0xFF;
+        buf[0] = steps.length;
         buf.setNumber(NumberFormat.UInt16LE, 1, startFreq);
         buf.setNumber(NumberFormat.UInt16LE, 3, startVol);
 
         for (let i = 0; i < steps.length; i++) {
             let offset = 5 + (i * 7);
-            buf[offset] = steps[i].waveform & 0xFF;
+            buf[offset] = steps[i].waveform;
             buf.setNumber(NumberFormat.UInt16LE, offset + 1, steps[i].frequency);
             buf.setNumber(NumberFormat.UInt16LE, offset + 3, steps[i].volume);
             buf.setNumber(NumberFormat.UInt16LE, offset + 5, steps[i].duration);
@@ -128,7 +127,7 @@ namespace music {
     //% blockNamespace=music
     //% drums.shadow="lists_create_with"
     //% drums.defl="music_create_drum"
-    //% weight=92
+    //% weight=11
     //% group="Custom Sounds"
     export function createDrumKit(drums: music.sequencer.DrumInstrument[]): music.sequencer.DrumInstrument[] {
         return drums;
@@ -145,7 +144,8 @@ namespace music {
     //% drums.shadow="variables_get"
     //% drums.defl="myDrumKit"
     //% notes.shadow="lists_create_with"
-    //% weight=78
+    //% notes.defl="lists_create_with"
+    //% weight=10
     //% group="Custom Sounds"
     export function playDrumNotes(drums: music.sequencer.DrumInstrument[], notes: number[][]) {
         let time = 0;
@@ -194,7 +194,7 @@ namespace music {
     //% sustain.defl=1024
     //% release.defl=5
     //% peak.defl=1024
-    //% weight=75
+    //% weight=4
     //% group="Custom Sounds"
     export function envelope(attack: number, decay: number, sustain: number, release: number, peak: number): number[] {
         return [attack, decay, sustain, release, peak]
@@ -210,7 +210,7 @@ namespace music {
     //% blockNamespace=music
     //% frequency.defl=0
     //% amplitude.defl=0
-    //% weight=75
+    //% weight=5
     //% group="Custom Sounds"
     export function lfo(frequency: number, amplitude: number): number[] {
         return [frequency, amplitude]
@@ -255,7 +255,7 @@ namespace music {
     //% block="%key %octave"
     //% blockNamespace=music
     //% octave.defl=4
-    //% weight=75
+    //% weight=3
     //% group="Custom Sounds"
     export function key(key: Key, octave: number): number {
         if (key === Key.None) return -1;
@@ -280,7 +280,7 @@ namespace music {
     //% pitchEnv.defl="music_env"
     //% ampLfo.defl="music_lfo"
     //% pitchLfo.defl="music_lfo"
-    //% weight=100
+    //% weight=1
     //% group="Custom Sounds"
     export function createInstrument(
         waveform: Waveshape,
@@ -328,7 +328,7 @@ namespace music {
     //% instrument.defl="myInstrument"
     //% notes.shadow="lists_create_with"
     //% notes.defl="music_create_note"
-    //% weight=80
+    //% weight=0
     //% group="Custom Sounds"
     export function playNotes(
         instrument: music.sequencer.Instrument,
@@ -367,9 +367,57 @@ namespace music {
     //% notes.defl="music_create_key"
     //% duration.defl=200
     //% volume.defl=1024
-    //% weight=95
+    //% weight=2
     //% group="Custom Sounds"
     export function createNote(notes: number[], duration: number, volume: number): SongNote {
         return new SongNote(notes, duration, volume);
+    }
+
+    /**
+     * Plays a sequence of notes where each note slides from its pitch 
+     * to the next note's pitch over the given duration.
+     */
+    //% blockId=music_play_slide_sequence
+    //% block="play slide sequence on %instrument notes %notes"
+    //% blockNamespace=music
+    //% instrument.shadow="variables_get"
+    //% instrument.defl="myInstrument"
+    //% notes.shadow="lists_create_with"
+    //% notes.defl="music_create_note"
+    //% weight=81
+    //% group="Custom Sounds"
+    export function playSlideSequence(instrument: music.sequencer.Instrument, notes: SongNote[]) {
+        if (!notes || notes.length < 2) return;
+
+        let timeOffset = 0;
+
+        for (let i = 0; i < notes.length - 1; i++) {
+            let current = notes[i];
+            let nextNote = notes[i + 1];
+
+            let startPitch = (current.notes && current.notes.length > 0) ? current.notes[0] : -1;
+            let endPitch = (nextNote && nextNote.notes && nextNote.notes.length > 0) ? nextNote.notes[0] : startPitch;
+
+            if (current.dur > 0 && startPitch > -1) {
+                let startFreq = music.lookupFrequency(startPitch + instrument.octave * 12);
+                let endFreq = (endPitch > -1)
+                    ? music.lookupFrequency(endPitch + instrument.octave * 12)
+                    : startFreq;
+
+                let buf = control.createBuffer(13);
+                buf.setNumber(NumberFormat.UInt8LE, 0, instrument.waveform);
+                buf.setNumber(NumberFormat.UInt8LE, 1, 0);
+                buf.setNumber(NumberFormat.UInt16LE, 2, startFreq);
+                buf.setNumber(NumberFormat.UInt16LE, 4, current.dur);
+                buf.setNumber(NumberFormat.UInt16LE, 6, current.vol);
+                buf.setNumber(NumberFormat.UInt16LE, 8, current.vol);
+                buf.setNumber(NumberFormat.UInt16LE, 10, endFreq);
+                buf.setNumber(NumberFormat.UInt8LE, 12, 0);
+
+                music.playInstructions(timeOffset, buf);
+            }
+
+            timeOffset += current.dur;
+        }
     }
 }
