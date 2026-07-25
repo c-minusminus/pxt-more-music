@@ -386,11 +386,12 @@ namespace music {
     //% notes.defl="music_create_note"
     //% weight=81
     //% group="Custom Sounds"
-    export function playSlideSequence(instrument: music.sequencer.Instrument, notes: SongNote[]) {
+    function playSlideSequence(instrument: music.sequencer.Instrument, notes: music.SongNote[]) {
         if (!notes || notes.length < 2) return;
 
-        let timeOffset = 0;
+        let activeSteps: { startFreq: number; endFreq: number; dur: number; vol: number }[] = [];
 
+        // 1. Gather all valid slide steps
         for (let i = 0; i < notes.length - 1; i++) {
             let current = notes[i];
             let nextNote = notes[i + 1];
@@ -404,20 +405,38 @@ namespace music {
                     ? music.lookupFrequency(endPitch + instrument.octave * 12)
                     : startFreq;
 
-                let buf = control.createBuffer(13);
-                buf.setNumber(NumberFormat.UInt8LE, 0, instrument.waveform);
-                buf.setNumber(NumberFormat.UInt8LE, 1, 0);
-                buf.setNumber(NumberFormat.UInt16LE, 2, startFreq);
-                buf.setNumber(NumberFormat.UInt16LE, 4, current.dur);
-                buf.setNumber(NumberFormat.UInt16LE, 6, current.vol);
-                buf.setNumber(NumberFormat.UInt16LE, 8, current.vol);
-                buf.setNumber(NumberFormat.UInt16LE, 10, endFreq);
-                buf.setNumber(NumberFormat.UInt8LE, 12, 0);
-
-                music.playInstructions(timeOffset, buf);
+                activeSteps.push({
+                    startFreq: startFreq,
+                    endFreq: endFreq,
+                    dur: current.dur,
+                    vol: (current.vol * 255) >> 6
+                });
             }
-
-            timeOffset += current.dur;
         }
+
+        if (activeSteps.length === 0) return;
+
+        // 2. Allocate ONE single buffer (12 bytes per step + 1 null terminator byte)
+        let buf = control.createBuffer(12 * activeSteps.length + 1);
+        let ptr = 0;
+
+        // 3. Pack all instructions sequentially into the same buffer stream
+        for (let step of activeSteps) {
+            buf.setNumber(NumberFormat.UInt8LE, ptr, instrument.waveform);
+            buf.setNumber(NumberFormat.UInt8LE, ptr + 1, 0);
+            buf.setNumber(NumberFormat.UInt16LE, ptr + 2, step.startFreq);
+            buf.setNumber(NumberFormat.UInt16LE, ptr + 4, step.dur);
+            buf.setNumber(NumberFormat.UInt16LE, ptr + 6, step.vol);
+            buf.setNumber(NumberFormat.UInt16LE, ptr + 8, step.vol);
+            buf.setNumber(NumberFormat.UInt16LE, ptr + 10, step.endFreq);
+
+            ptr += 12;
+        }
+
+        // Add 0 terminator at the end of the entire instruction stream
+        buf.setNumber(NumberFormat.UInt8LE, ptr, 0);
+
+        // 4. Play the entire continuous stream ONCE
+        music.playInstructions(0, buf);
     }
 }
