@@ -386,7 +386,7 @@ namespace music {
     //% notes.defl="music_create_note"
     //% weight=81
     //% group="Custom Sounds"
-    function playSlideSequence(instrument: music.sequencer.Instrument, notes: music.SongNote[]) {
+    export function playSlideSequence(instrument: music.sequencer.Instrument, notes: music.SongNote[]) {
         if (!notes || notes.length < 2) return;
 
         let activeSteps: { startFreq: number; endFreq: number; dur: number; vol: number }[] = [];
