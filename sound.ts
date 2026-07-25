@@ -374,9 +374,11 @@ namespace music {
     }
 
     /**
-     * Plays a sequence of notes where each note slides from its pitch 
-     * to the next note's pitch over the given duration.
-     */
+         * Plays a sequence of notes with full ADSR volume envelopes while smoothly 
+         * sliding pitch from each note to the next.
+         * * @param instrument The synth voice workspace configuration.
+         * @param notes Array of SongNotes to play sequentially.
+         */
     //% blockId=music_play_slide_sequence
     //% block="play slide sequence on %instrument notes %notes"
     //% blockNamespace=music
@@ -386,12 +388,11 @@ namespace music {
     //% notes.defl="music_create_note"
     //% weight=81
     //% group="Custom Sounds"
-    export function playSlideSequence(instrument: music.sequencer.Instrument, notes: music.SongNote[]) {
+    export function playSlideSequence(instrument: music.sequencer.Instrument, notes: SongNote[]) {
         if (!notes || notes.length < 2) return;
 
-        let activeSteps: { startFreq: number; endFreq: number; dur: number; vol: number }[] = [];
+        let timeOffset = 0;
 
-        // 1. Gather all valid slide steps
         for (let i = 0; i < notes.length - 1; i++) {
             let current = notes[i];
             let nextNote = notes[i + 1];
@@ -399,44 +400,236 @@ namespace music {
             let startPitch = (current.notes && current.notes.length > 0) ? current.notes[0] : -1;
             let endPitch = (nextNote && nextNote.notes && nextNote.notes.length > 0) ? nextNote.notes[0] : startPitch;
 
+            // Only render if note duration is valid and not a rest (-1)
             if (current.dur > 0 && startPitch > -1) {
                 let startFreq = music.lookupFrequency(startPitch + instrument.octave * 12);
                 let endFreq = (endPitch > -1)
                     ? music.lookupFrequency(endPitch + instrument.octave * 12)
                     : startFreq;
 
-                activeSteps.push({
-                    startFreq: startFreq,
-                    endFreq: endFreq,
-                    dur: current.dur,
-                    vol: (current.vol * 255) >> 6
-                });
+                // Render the note with ADSR volume envelopes + linear frequency glide!
+                let buf = renderSlideNote(
+                    instrument,
+                    startFreq,
+                    endFreq,
+                    current.dur,
+                    current.vol
+                );
+
+                music.playInstructions(timeOffset, buf);
+            }
+
+            timeOffset += current.dur;
+        }
+    }
+
+    /**
+     * Renders a note instruction buffer with full ADSR volume envelopes AND pitch sliding.
+     */
+    export function renderSlideNote(
+        instrument: music.sequencer.Instrument,
+        startFreq: number,
+        endFreq: number,
+        gateLength: number,
+        volume: number
+    ): Buffer {
+        const totalDuration = gateLength + instrument.ampEnvelope.release;
+
+        const ampLFOInterval = instrument.ampLFO.amplitude ? Math.max(500 / instrument.ampLFO.frequency, 50) : 50;
+        const pitchLFOInterval = instrument.pitchLFO.amplitude ? Math.max(500 / instrument.pitchLFO.frequency, 50) : 50;
+
+        let timePoints = [0];
+
+        let nextAETime = instrument.ampEnvelope.attack;
+        let nextPETime = instrument.pitchEnvelope.amplitude ? instrument.pitchEnvelope.attack : totalDuration;
+        let nextPLTime = instrument.pitchLFO.amplitude ? pitchLFOInterval : totalDuration;
+        let nextALTime = instrument.ampLFO.amplitude ? ampLFOInterval : totalDuration;
+
+        let time = 0;
+        while (time < totalDuration) {
+            if (nextAETime <= nextPETime && nextAETime <= nextPLTime && nextAETime <= nextALTime) {
+                time = nextAETime;
+                timePoints.push(nextAETime);
+                if (time < instrument.ampEnvelope.attack + instrument.ampEnvelope.decay && instrument.ampEnvelope.attack + instrument.ampEnvelope.decay < gateLength) {
+                    nextAETime = instrument.ampEnvelope.attack + instrument.ampEnvelope.decay;
+                } else if (time < gateLength) {
+                    nextAETime = gateLength;
+                } else {
+                    nextAETime = totalDuration;
+                }
+            } else if (nextPETime <= nextPLTime && nextPETime <= nextALTime && nextPETime < totalDuration) {
+                time = nextPETime;
+                timePoints.push(nextPETime);
+                if (time < instrument.pitchEnvelope.attack + instrument.pitchEnvelope.decay && instrument.pitchEnvelope.attack + instrument.pitchEnvelope.decay < gateLength) {
+                    nextPETime = instrument.pitchEnvelope.attack + instrument.pitchEnvelope.decay;
+                } else if (time < gateLength) {
+                    nextPETime = gateLength;
+                } else if (time < gateLength + instrument.pitchEnvelope.release) {
+                    nextPETime = Math.min(totalDuration, gateLength + instrument.pitchEnvelope.release);
+                } else {
+                    nextPETime = totalDuration;
+                }
+            } else if (nextPLTime <= nextALTime && nextPLTime < totalDuration) {
+                time = nextPLTime;
+                timePoints.push(nextPLTime);
+                nextPLTime += pitchLFOInterval;
+            } else if (nextALTime < totalDuration) {
+                time = nextALTime;
+                timePoints.push(nextALTime);
+                nextALTime += ampLFOInterval;
+            } else if (time < gateLength) {
+                time = gateLength;
+                timePoints.push(gateLength);
+            } else {
+                time = totalDuration;
+                timePoints.push(totalDuration);
+            }
+
+            if (time >= totalDuration) break;
+
+            if (nextAETime <= time) {
+                if (time < instrument.ampEnvelope.attack + instrument.ampEnvelope.decay && instrument.ampEnvelope.attack + instrument.ampEnvelope.decay < gateLength) {
+                    nextAETime = instrument.ampEnvelope.attack + instrument.ampEnvelope.decay;
+                } else if (time < gateLength) {
+                    nextAETime = gateLength;
+                } else {
+                    nextAETime = totalDuration;
+                }
+            }
+            if (nextPETime <= time) {
+                if (time < instrument.pitchEnvelope.attack + instrument.pitchEnvelope.decay && instrument.pitchEnvelope.attack + instrument.pitchEnvelope.decay < gateLength) {
+                    nextPETime = instrument.pitchEnvelope.attack + instrument.pitchEnvelope.decay;
+                } else if (time < gateLength) {
+                    nextPETime = gateLength;
+                } else if (time < gateLength + instrument.pitchEnvelope.release) {
+                    nextPETime = Math.min(totalDuration, gateLength + instrument.pitchEnvelope.release);
+                } else {
+                    nextPETime = totalDuration;
+                }
+            }
+            while (nextALTime <= time) nextALTime += ampLFOInterval;
+            while (nextPLTime <= time) nextPLTime += pitchLFOInterval;
+        }
+
+        // Helper to calculate base pitch sliding across time
+        let getBaseFreq = (t: number) => {
+            let progress = Math.min(1, Math.max(0, t / gateLength));
+            return startFreq + (endFreq - startFreq) * progress;
+        };
+
+        let prevAmp = instrumentVolumeAtTime(instrument, gateLength, 0, volume) | 0;
+        let prevPitch = instrumentPitchAtTime(instrument, getBaseFreq(0), gateLength, 0) | 0;
+        let prevTime = 0;
+
+        let nextAmp: number;
+        let nextPitch: number;
+        let ptr = 0;
+        const out = control.createBuffer(12 * timePoints.length + 1);
+
+        for (let i = 1; i < timePoints.length; i++) {
+            if (timePoints[i] - prevTime < 5) continue;
+
+            let curTime = timePoints[i];
+            nextAmp = instrumentVolumeAtTime(instrument, gateLength, curTime, volume) | 0;
+
+            // Calculates pitch at current time using the interpolated glide frequency!
+            nextPitch = instrumentPitchAtTime(instrument, getBaseFreq(curTime), gateLength, curTime) | 0;
+
+            ptr = addNote(
+                out,
+                ptr,
+                (curTime - prevTime) | 0,
+                prevAmp,
+                nextAmp,
+                instrument.waveform,
+                prevPitch,
+                255,
+                nextPitch
+            );
+
+            prevAmp = nextAmp;
+            prevPitch = nextPitch;
+            prevTime = curTime;
+        }
+
+        if (prevAmp > 0) {
+            ptr = addNote(
+                out,
+                ptr,
+                10,
+                prevAmp,
+                0,
+                instrument.waveform,
+                prevPitch,
+                255,
+                prevPitch
+            );
+        }
+
+        return out;
+    }
+
+    export function instrumentPitchAtTime(instrument: sequencer.Instrument, noteFrequency: number, gateLength: number, time: number) {
+        let mod = 0;
+        if (instrument.pitchEnvelope.amplitude) {
+            mod += envelopeValueAtTime(instrument.pitchEnvelope, time, gateLength)
+        }
+        if (instrument.pitchLFO.amplitude) {
+            mod += lfoValueAtTime(instrument.pitchLFO, time)
+        }
+        return Math.max(noteFrequency + mod, 0);
+    }
+
+    export function instrumentVolumeAtTime(instrument: sequencer.Instrument, gateLength: number, time: number, maxVolume: number) {
+        let mod = 0;
+        if (instrument.ampEnvelope.amplitude) {
+            mod += envelopeValueAtTime(instrument.ampEnvelope, time, gateLength)
+        }
+        if (instrument.ampLFO.amplitude) {
+            mod += lfoValueAtTime(instrument.ampLFO, time)
+        }
+        return ((Math.max(Math.min(mod, instrument.ampEnvelope.amplitude), 0) / 1024) * maxVolume) | 0;
+    }
+
+    export function envelopeValueAtTime(envelope: sequencer.Envelope, time: number, gateLength: number): number {
+        // ADSR envelopes consist of 4 stages. They are (in order):
+        //     1. The attack stage, where the value starts at 0 and rises to the maximum value
+        //     2. The decay stage, where the value falls from the maximum value to the sustain value
+        //     3. The sustain stage, where the value holds steady at the sustain value until the gate length ends
+        //     4. The release stage, where the value falls to 0 after the gate length ends
+        // If the gate length ends before the sustain stage, we immediately skip to the release stage. All stages
+        // use a linear function for the value
+        const adjustedSustain = (envelope.sustain / 1024) * envelope.amplitude;
+
+        // First check to see if we are already in the release stage
+        if (time > gateLength) {
+            if (time - gateLength > envelope.release) return 0;
+            else {
+                const releaseStartLevel = envelopeValueAtTime(envelope, gateLength, gateLength);
+                return releaseStartLevel - (releaseStartLevel / envelope.release) * (time - gateLength)
             }
         }
-
-        if (activeSteps.length === 0) return;
-
-        // 2. Allocate ONE single buffer (12 bytes per step + 1 null terminator byte)
-        let buf = control.createBuffer(12 * activeSteps.length + 1);
-        let ptr = 0;
-
-        // 3. Pack all instructions sequentially into the same buffer stream
-        for (let step of activeSteps) {
-            buf.setNumber(NumberFormat.UInt8LE, ptr, instrument.waveform);
-            buf.setNumber(NumberFormat.UInt8LE, ptr + 1, 0);
-            buf.setNumber(NumberFormat.UInt16LE, ptr + 2, step.startFreq);
-            buf.setNumber(NumberFormat.UInt16LE, ptr + 4, step.dur);
-            buf.setNumber(NumberFormat.UInt16LE, ptr + 6, step.vol);
-            buf.setNumber(NumberFormat.UInt16LE, ptr + 8, step.vol);
-            buf.setNumber(NumberFormat.UInt16LE, ptr + 10, step.endFreq);
-
-            ptr += 12;
+        else if (time < envelope.attack) {
+            return (envelope.amplitude / envelope.attack) * time
         }
+        else if (time < envelope.attack + envelope.decay) {
+            return envelope.amplitude - ((envelope.amplitude - adjustedSustain) / envelope.decay) * (time - envelope.attack)
+        }
+        else {
+            return adjustedSustain;
+        }
+    }
 
-        // Add 0 terminator at the end of the entire instruction stream
-        buf.setNumber(NumberFormat.UInt8LE, ptr, 0);
-
-        // 4. Play the entire continuous stream ONCE
-        music.playInstructions(0, buf);
+    /**
+     * Calculates the value of the LFO at the given time.
+     *
+     * TODO: might be nice to give options to shift the phase of the LFO or let it run free
+     *
+     * @param lfo The LFO to calculate the value of
+     * @param time The time to calculate the value at
+     */
+    export function lfoValueAtTime(lfo: sequencer.LFO, time: number) {
+        // Use cosine to smooth out the value somewhat
+        return Math.cos(((time / 1000) * lfo.frequency) * 2 * Math.PI) * lfo.amplitude
     }
 }
