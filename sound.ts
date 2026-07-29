@@ -388,37 +388,41 @@ namespace music {
     //% notes.defl="music_create_note"
     //% weight=81
     //% group="Custom Sounds"
-    export function playSlideSequence(instrument: music.sequencer.Instrument, notes: SongNote[]) {
+    function playSlideSequence(instrument: music.sequencer.Instrument, notes: music.SongNote[]) {
         if (!notes || notes.length < 2) return;
-
+    
         let timeOffset = 0;
-
+    
         for (let i = 0; i < notes.length - 1; i++) {
             let current = notes[i];
             let nextNote = notes[i + 1];
-
+    
             let startPitch = (current.notes && current.notes.length > 0) ? current.notes[0] : -1;
             let endPitch = (nextNote && nextNote.notes && nextNote.notes.length > 0) ? nextNote.notes[0] : startPitch;
-
+    
+            let startVol = current.vol;
+            let endVol = (nextNote && nextNote.vol !== undefined) ? nextNote.vol : startVol;
+    
             // Only render if note duration is valid and not a rest (-1)
             if (current.dur > 0 && startPitch > -1) {
                 let startFreq = music.lookupFrequency(startPitch + instrument.octave * 12);
                 let endFreq = (endPitch > -1)
                     ? music.lookupFrequency(endPitch + instrument.octave * 12)
                     : startFreq;
-
-                // Render the note with ADSR volume envelopes + linear frequency glide!
+    
+                // Render the note with ADSR volume envelopes + linear pitch AND volume glides!
                 let buf = renderSlideNote(
                     instrument,
                     startFreq,
                     endFreq,
                     current.dur,
-                    current.vol
+                    startVol,
+                    endVol
                 );
-
+    
                 music.playInstructions(timeOffset, buf);
             }
-
+    
             timeOffset += current.dur;
         }
     }
@@ -426,25 +430,26 @@ namespace music {
     /**
      * Renders a note instruction buffer with full ADSR volume envelopes AND pitch sliding.
      */
-    export function renderSlideNote(
+    function renderSlideNote(
         instrument: music.sequencer.Instrument,
         startFreq: number,
         endFreq: number,
         gateLength: number,
-        volume: number
+        startVol: number,
+        endVol: number
     ): Buffer {
         const totalDuration = gateLength + instrument.ampEnvelope.release;
-
+    
         const ampLFOInterval = instrument.ampLFO.amplitude ? Math.max(500 / instrument.ampLFO.frequency, 50) : 50;
         const pitchLFOInterval = instrument.pitchLFO.amplitude ? Math.max(500 / instrument.pitchLFO.frequency, 50) : 50;
-
+    
         let timePoints = [0];
-
+    
         let nextAETime = instrument.ampEnvelope.attack;
         let nextPETime = instrument.pitchEnvelope.amplitude ? instrument.pitchEnvelope.attack : totalDuration;
         let nextPLTime = instrument.pitchLFO.amplitude ? pitchLFOInterval : totalDuration;
         let nextALTime = instrument.ampLFO.amplitude ? ampLFOInterval : totalDuration;
-
+    
         let time = 0;
         while (time < totalDuration) {
             if (nextAETime <= nextPETime && nextAETime <= nextPLTime && nextAETime <= nextALTime) {
@@ -484,9 +489,9 @@ namespace music {
                 time = totalDuration;
                 timePoints.push(totalDuration);
             }
-
+    
             if (time >= totalDuration) break;
-
+    
             if (nextAETime <= time) {
                 if (time < instrument.ampEnvelope.attack + instrument.ampEnvelope.decay && instrument.ampEnvelope.attack + instrument.ampEnvelope.decay < gateLength) {
                     nextAETime = instrument.ampEnvelope.attack + instrument.ampEnvelope.decay;
@@ -510,32 +515,38 @@ namespace music {
             while (nextALTime <= time) nextALTime += ampLFOInterval;
             while (nextPLTime <= time) nextPLTime += pitchLFOInterval;
         }
-
-        // Helper to calculate base pitch sliding across time
+    
+        // Dynamic pitch interpolation helper
         let getBaseFreq = (t: number) => {
             let progress = Math.min(1, Math.max(0, t / gateLength));
             return startFreq + (endFreq - startFreq) * progress;
         };
-
-        let prevAmp = instrumentVolumeAtTime(instrument, gateLength, 0, volume) | 0;
-        let prevPitch = instrumentPitchAtTime(instrument, getBaseFreq(0), gateLength, 0) | 0;
+    
+        // Dynamic volume interpolation helper
+        let getBaseVol = (t: number) => {
+            let progress = Math.min(1, Math.max(0, t / gateLength));
+            return startVol + (endVol - startVol) * progress;
+        };
+    
+        let prevAmp = music.instrumentVolumeAtTime(instrument, gateLength, 0, getBaseVol(0)) | 0;
+        let prevPitch = music.instrumentPitchAtTime(instrument, getBaseFreq(0), gateLength, 0) | 0;
         let prevTime = 0;
-
+    
         let nextAmp: number;
         let nextPitch: number;
         let ptr = 0;
         const out = control.createBuffer(12 * timePoints.length + 1);
-
+    
         for (let i = 1; i < timePoints.length; i++) {
             if (timePoints[i] - prevTime < 5) continue;
-
+    
             let curTime = timePoints[i];
-            nextAmp = instrumentVolumeAtTime(instrument, gateLength, curTime, volume) | 0;
-
-            // Calculates pitch at current time using the interpolated glide frequency!
-            nextPitch = instrumentPitchAtTime(instrument, getBaseFreq(curTime), gateLength, curTime) | 0;
-
-            ptr = addNote(
+    
+            // Calculate pitch & volume at curTime using interpolated baseline!
+            nextAmp = music.instrumentVolumeAtTime(instrument, gateLength, curTime, getBaseVol(curTime)) | 0;
+            nextPitch = music.instrumentPitchAtTime(instrument, getBaseFreq(curTime), gateLength, curTime) | 0;
+    
+            ptr = music.addNote(
                 out,
                 ptr,
                 (curTime - prevTime) | 0,
@@ -546,14 +557,14 @@ namespace music {
                 255,
                 nextPitch
             );
-
+    
             prevAmp = nextAmp;
             prevPitch = nextPitch;
             prevTime = curTime;
         }
-
+    
         if (prevAmp > 0) {
-            ptr = addNote(
+            ptr = music.addNote(
                 out,
                 ptr,
                 10,
@@ -565,10 +576,15 @@ namespace music {
                 prevPitch
             );
         }
-
+    
         return out;
     }
 
+
+
+
+    
+    // these ar already defined in music, but they are not exported
     export function instrumentPitchAtTime(instrument: sequencer.Instrument, noteFrequency: number, gateLength: number, time: number) {
         let mod = 0;
         if (instrument.pitchEnvelope.amplitude) {
