@@ -71,8 +71,8 @@ namespace music {
     //% duration.defl=50
     //% weight=13
     //% group="Custom Sounds"
-    export function createDrumStep(waveform: Waveshape, frequency: number, volume: number, duration: number): music.sequencer.DrumStep {
-        let step = new music.sequencer.DrumStep();
+    export function createDrumStep(waveform: Waveshape, frequency: number, volume: number, duration: number): sequencer.DrumStep {
+        let step = new sequencer.DrumStep();
         step.waveform = waveform;
         step.frequency = frequency;
         step.volume = volume;
@@ -98,8 +98,8 @@ namespace music {
     export function createDrum(
         startFreq: number,
         startVol: number,
-        steps: music.sequencer.DrumStep[]
-    ): music.sequencer.DrumInstrument {
+        steps: sequencer.DrumStep[]
+    ): sequencer.DrumInstrument {
         let totalBytes = 5 + (steps.length * 7);
         let buf = control.createBuffer(totalBytes);
 
@@ -115,7 +115,7 @@ namespace music {
             buf.setNumber(NumberFormat.UInt16LE, offset + 5, steps[i].duration);
         }
 
-        return new music.sequencer.DrumInstrument(buf, 0);
+        return new sequencer.DrumInstrument(buf, 0);
     }
 
     /**
@@ -129,7 +129,7 @@ namespace music {
     //% drums.defl="music_create_drum"
     //% weight=11
     //% group="Custom Sounds"
-    export function createDrumKit(drums: music.sequencer.DrumInstrument[]): music.sequencer.DrumInstrument[] {
+    export function createDrumKit(drums: sequencer.DrumInstrument[]): sequencer.DrumInstrument[] {
         return drums;
     }
 
@@ -147,13 +147,13 @@ namespace music {
     //% notes.defl="lists_create_with"
     //% weight=10
     //% group="Custom Sounds"
-    export function playDrumNotes(drums: music.sequencer.DrumInstrument[], notes: number[][]) {
+    export function playDrumNotes(drums: sequencer.DrumInstrument[], notes: number[][]) {
         let time = 0;
         for (const note of notes) {
             for (let i = 0; i < note.length - 1; i++)
-                music.playInstructions(
+                playInstructions(
                     time,
-                    music.sequencer.renderDrumInstrument(drums[note[i]], 1024)
+                    sequencer.renderDrumInstrument(drums[note[i]], 1024)
                 );
 
             time += note[note.length - 1];
@@ -287,7 +287,7 @@ namespace music {
         ampEnv: number[], pitchEnv: number[],
         ampLfo: number[], pitchLfo: number[],
         octave: number
-    ): music.sequencer.Instrument {
+    ): sequencer.Instrument {
         if (!ampEnv || ampEnv.length === 0) ampEnv = [0, 0, 1024, 0, 1024];
         if (!pitchEnv || pitchEnv.length === 0) pitchEnv = [0, 0, 0, 0, 0];
         if (!ampLfo || ampLfo.length === 0) ampLfo = [0, 0];
@@ -314,7 +314,7 @@ namespace music {
         buf.setNumber(NumberFormat.UInt16LE, 25, pitchLfo[1]);
         buf[27] = octave & 0xFF;
 
-        return new music.sequencer.Instrument(buf);
+        return new sequencer.Instrument(buf);
     }
 
     /**
@@ -331,7 +331,7 @@ namespace music {
     //% weight=0
     //% group="Custom Sounds"
     export function playNotes(
-        instrument: music.sequencer.Instrument,
+        instrument: sequencer.Instrument,
         notes: SongNote[]
     ) {
         let timeOffset = 0
@@ -341,9 +341,9 @@ namespace music {
             if (currentNote._notes && currentNote._notes.length > 0) {
                 for (const pitch of currentNote._notes) {
                     if (pitch > -1) {
-                        music.playInstructions(timeOffset, music.sequencer.renderInstrument(
+                        playInstructions(timeOffset, sequencer.renderInstrument(
                             instrument,
-                            music.lookupFrequency(pitch + instrument.octave * 12),
+                            lookupFrequency(pitch + instrument.octave * 12),
                             currentNote._dur,
                             currentNote._vol
                         ))
@@ -388,7 +388,7 @@ namespace music {
     //% notes.defl="music_create_note"
     //% weight=81
     //% group="Custom Sounds"
-    function playSlideSequence(instrument: music.sequencer.Instrument, notes: music.SongNote[]) {
+    export function playSlideSequence(instrument: sequencer.Instrument, notes: SongNote[]) {
         if (!notes || notes.length < 2) return;
     
         let timeOffset = 0;
@@ -405,9 +405,9 @@ namespace music {
     
             // Only render if note duration is valid and not a rest (-1)
             if (current.dur > 0 && startPitch > -1) {
-                let startFreq = music.lookupFrequency(startPitch + instrument.octave * 12);
+                let startFreq = lookupFrequency(startPitch + instrument.octave * 12);
                 let endFreq = (endPitch > -1)
-                    ? music.lookupFrequency(endPitch + instrument.octave * 12)
+                    ? lookupFrequency(endPitch + instrument.octave * 12)
                     : startFreq;
     
                 // Render the note with ADSR volume envelopes + linear pitch AND volume glides!
@@ -420,7 +420,7 @@ namespace music {
                     endVol
                 );
     
-                music.playInstructions(timeOffset, buf);
+                playInstructions(timeOffset, buf);
             }
     
             timeOffset += current.dur;
@@ -430,8 +430,8 @@ namespace music {
     /**
      * Renders a note instruction buffer with full ADSR volume envelopes AND pitch sliding.
      */
-    function renderSlideNote(
-        instrument: music.sequencer.Instrument,
+    export function renderSlideNote(
+        instrument: sequencer.Instrument,
         startFreq: number,
         endFreq: number,
         gateLength: number,
@@ -528,8 +528,8 @@ namespace music {
             return startVol + (endVol - startVol) * progress;
         };
     
-        let prevAmp = music.instrumentVolumeAtTime(instrument, gateLength, 0, getBaseVol(0)) | 0;
-        let prevPitch = music.instrumentPitchAtTime(instrument, getBaseFreq(0), gateLength, 0) | 0;
+        let prevAmp = instrumentVolumeAtTime(instrument, gateLength, 0, getBaseVol(0)) | 0;
+        let prevPitch = instrumentPitchAtTime(instrument, getBaseFreq(0), gateLength, 0) | 0;
         let prevTime = 0;
     
         let nextAmp: number;
@@ -543,10 +543,10 @@ namespace music {
             let curTime = timePoints[i];
     
             // Calculate pitch & volume at curTime using interpolated baseline!
-            nextAmp = music.instrumentVolumeAtTime(instrument, gateLength, curTime, getBaseVol(curTime)) | 0;
-            nextPitch = music.instrumentPitchAtTime(instrument, getBaseFreq(curTime), gateLength, curTime) | 0;
+            nextAmp = instrumentVolumeAtTime(instrument, gateLength, curTime, getBaseVol(curTime)) | 0;
+            nextPitch = instrumentPitchAtTime(instrument, getBaseFreq(curTime), gateLength, curTime) | 0;
     
-            ptr = music.addNote(
+            ptr = addNote(
                 out,
                 ptr,
                 (curTime - prevTime) | 0,
@@ -564,7 +564,7 @@ namespace music {
         }
     
         if (prevAmp > 0) {
-            ptr = music.addNote(
+            ptr = addNote(
                 out,
                 ptr,
                 10,
